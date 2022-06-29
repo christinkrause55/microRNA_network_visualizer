@@ -1,4 +1,4 @@
-## microRNA network visualizer
+## microRNA network visualizer (miRNA NVis)
 This tool framework can be used for high throughput analysis of microRNA microarray data sets.
 A database connection and database which manages the underlying data will be published upon publication to ensure reproducible data usage. 
 
