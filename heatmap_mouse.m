@@ -26,14 +26,10 @@ if(HFD_chow_overall)
     select = table_pvalues.isexpressed == 1 & ... 
         ~contains(string(table_pvalues.TranscriptID),'r') & ...
         table_pvalues.pHFD_chow < 0.05;
-    mRNAs = {'Appl2','Arhgap24','Cd82','Coasy','Cobll1','Ddx3x',...
-    'Gstm2','Gk','Hist1h3h','Hsd17b12','Inhbe','Khk','Myc',...
-    'Smim13','Tap1'};
-mRNAs = {'Cobll1','Gk','Inhbe','Khk','Gstm2'};
+    mRNAs = {}; % gene names will be placed after publication
 elseif(regCluster1)
     % Regulationscluster 1:		HFD vs Chow ist UP; CR und Ex4 dwn		
-    mRNAs = {'Appl2','Arhgap24','Coasy','Hsd17b12','Gk','Inhbe','Tap1','Gstm2','Khk','Hist1h3h'};
-    mRNAs = {'Coasy','Hsd17b12','Gk','Inhbe','Tap1'};
+    mRNAs = {}; % gene names will be placed after publication
     select = table_pvalues.isexpressed == 1 & ... 
         ~contains(string(table_pvalues.TranscriptID),'r') & ...
         (table_pvalues.pHFD_chow < 0.05 & table_pvalues.eHFD_chow < 1) & ...
@@ -43,7 +39,7 @@ elseif(regCluster1)
         );   
 elseif(regCluster2)
     % Regulationscluster 2:		HFD vs Chow ist UP; VSG ist dwn		
-    mRNAs = {'Coasy','Hsd17b12','Gk','Inhbe','Gstm2','Khk'};
+    mRNAs = {}; % gene names will be placed after publication
     select = table_pvalues.isexpressed == 1 & ... 
         ~contains(string(table_pvalues.TranscriptID),'r') & ...
         (table_pvalues.pHFD_chow < 0.05 & table_pvalues.eHFD_chow < 1) & ...
@@ -53,7 +49,7 @@ elseif(regCluster2)
         );
 elseif(regCluster3)
     % Regulationscluster 3:		HFD vs Chow ist UP; VSG ist UP		
-    mRNAs = {'Appl2','Arhgap24','Cd82','Tap1','Hist1h3h'};
+    mRNAs = {}; % gene names will be placed after publication
     select = table_pvalues.isexpressed == 1 & ... 
         ~contains(string(table_pvalues.TranscriptID),'r') & ...
         (table_pvalues.pHFD_chow < 0.05 & table_pvalues.eHFD_chow < 1) & ...
@@ -63,15 +59,14 @@ elseif(regCluster3)
         );
 elseif(regCluster4)
     % Regulationscluster 4:		HFD vs Chow ist UP; HC ist dwn		
-    mRNAs = {'Coasy','Hsd17b12','Gk','Inhbe','Tap1','Gstm2','Khk','Hist1h3h'};
+    mRNAs = {}; % gene names will be placed after publication
     select = table_pvalues.isexpressed == 1 & ... 
         ~contains(string(table_pvalues.TranscriptID),'r') & ...
         (table_pvalues.pHFD_chow < 0.05 & table_pvalues.eHFD_chow < 1) & ...
         (table_pvalues.pHC_HFD < 0.05 & table_pvalues.eHC_HFD > 1);   
 elseif(regCluster5)
     % Regulationscluster 5:		HFD vs Chow ist DWN; HC, VSG und Ex sind UP			
-    mRNAs = {'Myc','Smim13','Cobll1','Ddx3x','Appl2','Arhgap24','Cd82'};
-    mRNAs = {'Smim13','Cobll1','Ddx3x','Appl2','Arhgap24','Cd82'};
+    mRNAs = {}; % gene names will be placed after publication
     select = table_pvalues.isexpressed == 1 & ... 
         ~contains(string(table_pvalues.TranscriptID),'r') & ...
         (table_pvalues.pHFD_chow < 0.05 & table_pvalues.eHFD_chow > 1) & ...
@@ -86,10 +81,7 @@ elseif(regCluster5)
          );
 elseif(specialTargets)
     % Also search for names and special miRNAs
-    select = strcmp(string(table_pvalues.TranscriptID),'mmu-miR-21a-5p') | ...
-        strcmp(string(table_pvalues.TranscriptID),'mmu-miR-16-5p') | ...
-        strcmp(string(table_pvalues.TranscriptID),'mmu-miR-505-5p') | ...
-        strcmp(string(table_pvalues.TranscriptID),'mmu-miR-149-5p');
+    select = strcmp(string(table_pvalues.TranscriptID),'mmu-miR-1-5p');
 end
 
 disp(sum(select) + " miRNAs to process")
@@ -164,11 +156,11 @@ ID_VSG(2,:) = cell2mat(result(:,3:end));
 
 
 
-query2 = ['select Epi_Nr, T2DnachUKE from UKE_Cohort_Parameters'];
+query2 = ['select Epi_Nr, T2D from UKE_Cohort_Parameters'];
     connection = sqlite(dbfile);
     result = fetch(connection,query2);
     close(connection);
-    parameters = {'EpiNr', 'T2DnachUKE'};
+    parameters = {'EpiNr', 'T2D'};
 
     col2 = array2table(zeros(size(result)));
     for i=1
@@ -231,15 +223,7 @@ orderVSG = [orderVSG; str2num(cell2mat(clustergVSG35.RowLabels))];
 
 % Merge Tables
 traitTable = [values_twist_DZD(orderDZD,2:end); values_twist_VSG(orderVSG,2:end)];
-names = {'chow'; 'chow'; 'chow'; 'chow'; 'chow'; 'chow'; ...
-    'HFD'; 'HFD';'HFD'; 'HFD';'HFD'; 'HFD'; ...
-    'H>C';'H>C';'H>C';'H>C';'H>C';'H>C';...
-    'CR';'CR';'CR';'CR';'CR';'CR';...
-    'Ex4';'Ex4';'Ex4';'Ex4';'Ex4';'Ex4';...
-    'Sham d9';'Sham d9';'Sham d9';'Sham d9';'Sham d9';'Sham d9';...
-    'VSG d9';'VSG d9';'VSG d9';'VSG d9';'VSG d9';'VSG d9'; ...
-    'Sham d35';'Sham d35';'Sham d35';'Sham d35';'Sham d35';'Sham d35'; ...
-    'VSG d35';'VSG d35';'VSG d35';'VSG d35';'VSG d35';'VSG d35'};
+names = {}; % Names will be placed after publication
 
 % Colormap redbluecmap, redgreencmap, colormap('bone')
 clusterg = clustergram(table2array(traitTable),'Colormap',colormap('spring'),...
@@ -251,18 +235,7 @@ cgax = findobj(cgfig, 'type','axes','tag','HeatMapAxes'); % main axis handle
 traitTable(:,end+1) = array2table(names);
 traitTable2(:,end+1) = array2table(names);
 
-
-
 traitTable(:,end+1) = array2table(names);
 traitTable2(:,end+1) = array2table(names);
 
-clear t2 nd orderT2D dbfile s specialTargets toi tmp take values EpiNr cgfig cgax ans coeff
-clear clusterg clusterND clusterT2D col2 i k orderND parameters query query2 result
-clear selectFCup selectFCupdw term term2 tempTable1 tempTable2 valuesTwist
-clear clusterChow clustergCR clustergEX clustergHC clustergHFD orderDZD orderVSG
-clear term3 values_DZD values_VSG names ID_DZD ID_VSG
-
-drawGraph_mouse;
- 
-
-    
+drawGraph_mouse;    
