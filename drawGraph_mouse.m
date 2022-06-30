@@ -1,7 +1,6 @@
 %% Set mRNA of interest
-%mRNAs = {'Appl2','Arhgap24','Cd82','Coasy','Cobll1','Ddx3x',...
-%    'Gstm2','Gk','Hist1h3h','Hsd17b12','Inhbe','Khk','Myc',...
-%    'Smim13','Tap1'};
+mRNAs = {} % Names will ne added after publication
+
 
 % Take only Trait-Associated miRNAs generated from heatmap and which
 % where clustered by clustering
@@ -143,8 +142,3 @@ p.NodeColor = 'r';
 p.MarkerSize = 8;
 highlight(p,[size(adjacency_select,1)+1:1:size(adjacency_select,1)+size(adjacency_select,2)],'NodeColor','k','Marker', 's','MarkerSize',10)
 highlight(p,negSource,negTarget,'EdgeColor',[0.25 0.5 1])
-
-clear indx isNegative indxt tmpWidth i tmp row col GOI miRNA_t w miRNA_List
-clear RNAseq_mode eWidth eLabels k last RNAseq_targeted tmp tmp1 tmp2 negSource negTarget
-clear nSource nTarget nLabels eWidth indxt eLabels firstFlag miRNAs_t G p
-%effectSizes
