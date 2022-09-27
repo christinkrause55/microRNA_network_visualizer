@@ -204,13 +204,13 @@ for k=1:size(miRNA_IDs,1)
         col1.Properties.VariableNames{2} = miRNA_IDs{k,2};
 
         %% Get Parameters
-        query2 = ['select UKE_Cohort_Parameters.Epi_Nr, T2DnachUKE, Geschlecht_2_w_1_m, OPBMI, Age, OPNASHScore, HbA1c, ISGlucose, ISTriglyceride, Insulin_pmol_L_525_max, HOMA_IR, Cpeptid_pmol_L, Verfettung_Hepatozyten, OPFibrose ',...
+        query2 = ['select UKE_Cohort_Parameters.Epi_Nr, T2D, sex, BMI, age, NAS, HbA1c, glucose, triglyceride, insulin, HOMA_IR, Cpeptid, fatHepatozyte, fibrosis ',...
             'from UKE_Cohort_Parameters, UKE_Cohort_Scores, UKE_Cohort_FattyContent ',...
             'where UKE_Cohort_Parameters.Epi_Nr = UKE_Cohort_Scores.Epi_Nr and UKE_Cohort_Parameters.Epi_Nr = UKE_Cohort_FattyContent.Epi_Nr'];
         connection = sqlite(dbfile);
         result = fetch(connection,query2);
         close(connection);
-        parameters = {'EpiNr', 'T2DnachUKE', 'Geschlecht_2_w_1_m', 'OPBMI', 'Age', 'OPNASHScore','HbA1c','ISGlucose','ISTriglyceride','Insulin','HOMA_IR', 'Cpeptid', 'Hepatolipid','Fibrose'};
+        parameters = {'EpiNr', 'T2D', 'sex', 'BMI', 'age', 'NAS','HbA1c','glucose','triglyceride','insulin','HOMA_IR', 'Cpeptid', 'Hepatolipid','Fibrosis'};
 
         col2 = array2table(zeros(size(result)));
         for i=1:1
@@ -228,13 +228,13 @@ for k=1:size(miRNA_IDs,1)
         %[a,b] = corr(table2array(TableAll),'rows','pairwise');
 
         %% Get Parameters
-        query2 = ['select UKE_Cohort_Parameters.Epi_Nr, T2DnachUKE, Geschlecht_2_w_1_m, OPBMI, Age, OPNASHScore, HbA1c, ISGlucose, ISTriglyceride, Insulin_pmol_L_525_max, HOMA_IR, Cpeptid_pmol_L, Verfettung_Hepatozyten, OPFibrose ',...
+        query2 = ['select UKE_Cohort_Parameters.Epi_Nr, T2Dn, sex, BMI, age, NAS, HbA1c, glucose, triglyceride, insulin, HOMA_IR, Cpeptid, fatHepatozytes, fibrosis ',...
             'from UKE_Cohort_Parameters, UKE_Cohort_Scores, UKE_Cohort_FattyContent ',...
             'where UKE_Cohort_Parameters.Epi_Nr = UKE_Cohort_Scores.Epi_Nr and UKE_Cohort_Parameters.Epi_Nr = UKE_Cohort_FattyContent.Epi_Nr'];
         connection = sqlite(dbfile);
         result = fetch(connection,query2);
         close(connection);
-        parameters = {'EpiNr', 'T2DnachUKE', 'Geschlecht_2_w_1_m', 'OPBMI', 'Age', 'OPNASHScore','HbA1c','ISGlucose','ISTriglyceride','Insulin','HOMA_IR', 'Cpeptid', 'Hepatolipid','Fibrose'};
+        parameters = {'EpiNr', 'T2D', 'sex', 'BMI', 'age', 'NAS','HbA1c','glucose','triglyceride','insulin','HOMA_IR', 'Cpeptid', 'Hepatolipid','fibrosis'};
 
         col2 = array2table(zeros(size(result)));
         for i=1:1
@@ -316,7 +316,3 @@ for k=1:size(miRNA_IDs,1)
 end
 
 table_pvalues = sortrows(table_pvalues,'TranscriptID','ascend');
-clear B dev stats mdl Xtable Ytable k i col1 col2 query query2 query3 term term2 termMIR result connection parameters s 
-clear Chow CR data Ex H HC HFD i k mdl VSG_d35 VSG_d9 Sham_d35 Sham_d9 term3 dbfile miRNA_IDs TableAll
-% Continue with next step
-% heatmap
