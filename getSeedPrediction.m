@@ -1,12 +1,13 @@
 function [table_out] = getSeedPrediction(miRSeq, mRNASeq,nameTable,writeTo)
     %miRSeq = ["UGUCAGUUUGUCAAAUACCCCA" "mmu-miR-223-3p"];
     mRNASeq = erase(mRNASeq,' ');
+    drawPlot = false;
     
 %% Init table    
     %Name_miR | 8mer | 7mer_m8 | 7mer_A1 | 6mer | offset_6mer | %
     %AU_content | in_proximity_same (<34 nt) | in_proximity_other (<8-40 nt)|%
-    %3'-miR-Binding at 12 -17 nt | > 15 nt Stop codon | relative location %
-    table_out = table(miRSeq(1,2),0,0,0,0,0,0,false,convertCharsToStrings(' '),convertCharsToStrings(' '),false,0.0);
+    %3'-miR-Binding at 12 -17 nt | > 15 nt Stop codon | relative location | Pumilio consensus | count Pumilio %
+    table_out = table(miRSeq(1,2),0,0,0,0,0,0,false,convertCharsToStrings(' '),convertCharsToStrings(' '),false,0.0,0,0);
     table_out.Properties.VariableNames{1} = 'miRNA';
     table_out.Properties.VariableNames{2} = 'Pos_8mer';
     table_out.Properties.VariableNames{3} = 'Pos_7mer_m8';
@@ -19,6 +20,8 @@ function [table_out] = getSeedPrediction(miRSeq, mRNASeq,nameTable,writeTo)
     table_out.Properties.VariableNames{10} = '3_miR_binding';
     table_out.Properties.VariableNames{11} = 'Stop_codon';
     table_out.Properties.VariableNames{12} = 'relative_within_UTR';
+    table_out.Properties.VariableNames{13} = 'Pumilio_consensus_min_distance';
+    table_out.Properties.VariableNames{14} = 'Pumilio_consensus_count';
     table_idx = 1;
     
 %% Loop for miRNA sequences -> process_seed, find seeds in mRNA
@@ -36,7 +39,8 @@ function [table_out] = getSeedPrediction(miRSeq, mRNASeq,nameTable,writeTo)
             table_out(table_idx,10) = array2table(convertCharsToStrings(b));
             table_out(table_idx,11) = array2table(isBehindStop(positions(j),true));
             table_out(table_idx,12) = array2table(whereInUTR(positions(j),mRNASeq));
-            
+            table_out(table_idx,13) = array2table(isPumilio(positions(j),mRNASeq));
+            table_out(table_idx,14) = array2table(numberPumilio(positions(j),mRNASeq));
             table_idx = table_idx +1;
         end
         
@@ -50,7 +54,8 @@ function [table_out] = getSeedPrediction(miRSeq, mRNASeq,nameTable,writeTo)
             table_out(table_idx,10) = array2table(convertCharsToStrings(b));
             table_out(table_idx,11) = array2table(isBehindStop(positions(j),true));
             table_out(table_idx,12) = array2table(whereInUTR(positions(j),mRNASeq));
-            
+            table_out(table_idx,13) = array2table(isPumilio(positions(j),mRNASeq));
+            table_out(table_idx,14) = array2table(numberPumilio(positions(j),mRNASeq));
             table_idx = table_idx +1;
         end
         
@@ -64,10 +69,12 @@ function [table_out] = getSeedPrediction(miRSeq, mRNASeq,nameTable,writeTo)
             table_out(table_idx,10) = array2table(convertCharsToStrings(b));
             table_out(table_idx,11) = array2table(isBehindStop(positions(j),true));
             table_out(table_idx,12) = array2table(whereInUTR(positions(j),mRNASeq));
-            
+            table_out(table_idx,13) = array2table(isPumilio(positions(j),mRNASeq));
+            table_out(table_idx,14) = array2table(numberPumilio(positions(j),mRNASeq));
             table_idx = table_idx +1;
         end
         
+        % Fill array for 6mer
         positions = contains_6mer(seed_miR, mRNASeq);
         for j=1:size(positions,2)
             table_out(table_idx,1) = array2table(miRSeq(seq,2));
@@ -77,10 +84,12 @@ function [table_out] = getSeedPrediction(miRSeq, mRNASeq,nameTable,writeTo)
             table_out(table_idx,10) = array2table(convertCharsToStrings(b));
             table_out(table_idx,11) = array2table(isBehindStop(positions(j),true));
             table_out(table_idx,12) = array2table(whereInUTR(positions(j),mRNASeq));
-            
+            table_out(table_idx,13) = array2table(isPumilio(positions(j),mRNASeq));
+            table_out(table_idx,14) = array2table(numberPumilio(positions(j),mRNASeq));
             table_idx = table_idx +1;
         end
         
+        % Fill array for offset 6mer
         positions = contains_offset_6mer(seed_miR, mRNASeq);
         for j=1:size(positions,2)
             table_out(table_idx,1) = array2table(miRSeq(seq,2));
@@ -90,7 +99,8 @@ function [table_out] = getSeedPrediction(miRSeq, mRNASeq,nameTable,writeTo)
             table_out(table_idx,10) = array2table(convertCharsToStrings(b));
             table_out(table_idx,11) = array2table(isBehindStop(positions(j),true));
             table_out(table_idx,12) = array2table(whereInUTR(positions(j),mRNASeq));
-            
+            table_out(table_idx,13) = array2table(isPumilio(positions(j),mRNASeq));
+            table_out(table_idx,14) = array2table(numberPumilio(positions(j),mRNASeq));
             table_idx = table_idx +1;
         end
         
@@ -123,163 +133,159 @@ function [table_out] = getSeedPrediction(miRSeq, mRNASeq,nameTable,writeTo)
     
     
 %% Ploting
-if(false)
-    subplot(3,2,1)
-    values = table2array(table_out((table2array(table_out(:,2))~= 0),2));
-    histogram(values,round(size(mRNASeq,2)))
-    title('8mer')
-    ylabel('Count')
-    xlabel('nt of target gene')
-    subplot(3,2,2)
-    values = table2array(table_out((table2array(table_out(:,3))~= 0),3));
-    histogram(values,round(size(mRNASeq,2)))
-    title('7mer m8')
-    ylabel('Count')
-    xlabel('nt of target gene')
-    subplot(3,2,3)
-    values = table2array(table_out((table2array(table_out(:,4))~= 0),4));
-    histogram(values,round(size(mRNASeq,2)))
-    title('7mer A1')
-    ylabel('Count')
-    xlabel('nt of target gene')
-    subplot(3,2,4)
-    values = table2array(table_out((table2array(table_out(:,5))~= 0),5));
-    histogram(values,round(size(mRNASeq,2)))
-    title('6mer')
-    ylabel('Count')
-    xlabel('nt of target gene')
-    subplot(3,2,5)
-    values = table2array(table_out((table2array(table_out(:,6))~= 0),6));
-    histogram(values,round(size(mRNASeq,2)))
-    title('offset 6mer')
-    ylabel('Count')
-    xlabel('nt of target gene')
-    subplot(3,2,6)
-    values = table2array(table_out((table2array(table_out(:,2))~= 0 & ~strcmp(table2array(table_out(:,10)),"0 - 0")),2));
-    histogram(values,round(size(mRNASeq,2)))
-    title('8mer and additional seed')
-    ylabel('Count')
-    xlabel('nt of target gene')
-end
-%% Additional functions for loops
-   
-% Get 7nt seed of miRNA on 5' end
+    if(drawPlot)
+        subplot(3,2,1)
+        values = table2array(table_out((table2array(table_out(:,2))~= 0),2));
+        histogram(values,round(size(mRNASeq,2)))
+        title('8mer')
+        ylabel('Count')
+        xlabel('nt of target gene')
+        subplot(3,2,2)
+        values = table2array(table_out((table2array(table_out(:,3))~= 0),3));
+        histogram(values,round(size(mRNASeq,2)))
+        title('7mer m8')
+        ylabel('Count')
+        xlabel('nt of target gene')
+        subplot(3,2,3)
+        values = table2array(table_out((table2array(table_out(:,4))~= 0),4));
+        histogram(values,round(size(mRNASeq,2)))
+        title('7mer A1')
+        ylabel('Count')
+        xlabel('nt of target gene')
+        subplot(3,2,4)
+        values = table2array(table_out((table2array(table_out(:,5))~= 0),5));
+        histogram(values,round(size(mRNASeq,2)))
+        title('6mer')
+        ylabel('Count')
+        xlabel('nt of target gene')
+        subplot(3,2,5)
+        values = table2array(table_out((table2array(table_out(:,6))~= 0),6));
+        histogram(values,round(size(mRNASeq,2)))
+        title('offset 6mer')
+        ylabel('Count')
+        xlabel('nt of target gene')
+        subplot(3,2,6)
+        values = table2array(table_out((table2array(table_out(:,2))~= 0 & ~strcmp(table2array(table_out(:,10)),"0 - 0")),2));
+        histogram(values,round(size(mRNASeq,2)))
+        title('8mer and additional seed')
+        ylabel('Count')
+        xlabel('nt of target gene')
+    end
+    %% Additional functions for loops
+
+    % Get 7nt seed of miRNA on 5' end
     function seed = process_seed(miRSeq)
-        seed_prep = extractBetween(miRSeq,2,8);
-        % From RNA into DNA
-        seed_prep = strrep(seed_prep,'U','T');
-        % Build reverse and complement for sequence to find on mRNA
-        seed_prep = reverse(seed_prep);
-        temp = char(seed_prep(1));
-        seed = ' ';
-        for s = 1:size(temp,2)
-           if temp(s) == 'A'
-               seed = strcat(seed,'T');
-           elseif temp(s) == 'T'
-               seed = strcat(seed,'A');
-           elseif temp(s) == 'G'
-               seed = strcat(seed,'C');
-           else 
-               seed = strcat(seed,'G');
-           end
-        end
+            seed_prep = extractBetween(miRSeq,2,8);
+            % From RNA into DNA
+            seed_prep = strrep(seed_prep,'U','T');
+            % Build reverse and complement for sequence to find on mRNA
+            seed_prep = reverse(seed_prep);
+            temp = char(seed_prep(1));
+            seed = ' ';
+            for s = 1:size(temp,2)
+               if temp(s) == 'A'
+                   seed = strcat(seed,'T');
+               elseif temp(s) == 'T'
+                   seed = strcat(seed,'A');
+               elseif temp(s) == 'G'
+                   seed = strcat(seed,'C');
+               else 
+                   seed = strcat(seed,'G');
+               end
+            end
     end
 
-% Get 6 nt seed (12-17) of miRNA on 3' end
+    % Get 6 nt seed (12-17) of miRNA on 3' end
     function seed = upstream_seed(miRSeq)
-        %Extraction, conversion and reverse
-        if(size(char(miRSeq),2)>= 17)
-            seed_prep = reverse(strrep(extractBetween(miRSeq,12,17),'U','T'));
-        else
-            seed_prep = reverse(strrep(extractBetween(miRSeq,12,size(char(miRSeq),2)),'U','T'));
-        end
-        temp = char(seed_prep(1));
-        seed = ' ';
-        for s = 1:size(temp,2)
-           if temp(s) == 'A'
-               seed = strcat(seed,'T');
-           elseif temp(s) == 'T'
-               seed = strcat(seed,'A');
-           elseif temp(s) == 'G'
-               seed = strcat(seed,'C');
-           else 
-               seed = strcat(seed,'G');
-           end
-        end
+            %Extraction, conversion and reverse
+            if(size(char(miRSeq),2)>= 17)
+                seed_prep = reverse(strrep(extractBetween(miRSeq,12,17),'U','T'));
+            else
+                seed_prep = reverse(strrep(extractBetween(miRSeq,12,size(char(miRSeq),2)),'U','T'));
+            end
+            temp = char(seed_prep(1));
+            seed = ' ';
+            for s = 1:size(temp,2)
+               if temp(s) == 'A'
+                   seed = strcat(seed,'T');
+               elseif temp(s) == 'T'
+                   seed = strcat(seed,'A');
+               elseif temp(s) == 'G'
+                   seed = strcat(seed,'C');
+               else 
+                   seed = strcat(seed,'G');
+               end
+            end
     end
 
-% Get all positions of 8mer (7 nt complementary binding + A opposite of nt 1)
+    % Get all positions of 8mer (7 nt complementary binding + A opposite of nt 1)
     function [k] = contains_8mer (seed, mRNASeq)
         k = strfind(mRNASeq, strcat(seed,'A'));
     end
 
-% Get all positions of 7mer_A1 (6 nt complementary biding + A opposite of nt 1)
+    % Get all positions of 7mer_A1 (6 nt complementary biding + A opposite of nt 1)
     function [k] = contains_7mer_A1 (seed, mRNASeq)
-        k = strfind(mRNASeq, strcat(seed(2:end),'A'));
+            k = strfind(mRNASeq, strcat(seed(2:end),'A'));
     end
 
-% Get all positions of 7mer_m8 (7 nt complementary binding)
+    % Get all positions of 7mer_m8 (7 nt complementary binding)
     function [k] = contains_7mer_m8 (seed, mRNASeq)
-        k = strfind(mRNASeq, seed);
+            k = strfind(mRNASeq, seed);
     end
 
-% Get all positions of 6mer (6 nt complementary binding, nt 2-7)
+    % Get all positions of 6mer (6 nt complementary binding, nt 2-7)
     function [k] = contains_6mer (seed, mRNASeq)
-        k = strfind(mRNASeq, strcat(seed(2:end)));
+            k = strfind(mRNASeq, strcat(seed(2:end)));
     end
 
-% Get all positions of offset 6mer (6 nt complementary binding, nt 3-8)
+    % Get all positions of offset 6mer (6 nt complementary binding, nt 3-8)
     function [k] = contains_offset_6mer (seed, mRNASeq)
-        k = strfind(mRNASeq, strcat(seed(1:end-1)));
+            k = strfind(mRNASeq, strcat(seed(1:end-1)));
     end
 
-% Get boolean whether opstream of 5' seed there is an additional 3' seed and its
-% respective positions
+    % Get boolean whether opstream of 5' seed there is an additional 3' seed and its
+    % respective positions
     function [contains,temp] = isBindingAlsoUpstream(pos,miRSeq,mRNASeq)
         contains = false;
         seed = upstream_seed(miRSeq);
         limit_upstream_seed = pos - 5 - 6;
         position_secondSeed = zeros(1,2);
         idx = 1;
-        
+
         if(limit_upstream_seed >= 1)
             roi = extractBetween(mRNASeq,limit_upstream_seed,pos-1);
         else
             roi = extractBetween(mRNASeq,1,pos-1);
         end
-        
+
         for i=1:2
             k = strfind(roi,seed(i:end));
-           
             if(~isempty(k{1}))
-                contains = true;
-                position_secondSeed(idx,1) = k{1}(1) + limit_upstream_seed-1;
-                position_secondSeed(idx,2) = size(seed(i:end),2);
-                idx = idx+1;
+                    contains = true;
+                    position_secondSeed(idx,1) = k{1}(1) + limit_upstream_seed-1;
+                    position_secondSeed(idx,2) = size(seed(i:end),2);
+                    idx = idx+1;
             end
             k = strfind(roi,seed(i:end-1));
             if(~isempty(k{1}))
-                contains = true;
-                position_secondSeed(idx,1) = k{1}(1) + limit_upstream_seed-1;
-                position_secondSeed(idx,2) = size(seed(i:end),2);
-                idx = idx+1;
-            end
-        end
-        % Substract 1 from upper limit, because new 1 of substring is upper
-        % limit + relative position within new substring
-        position_out = unique(position_secondSeed,'rows');
-        
-        temp = append(num2str(position_out(1,1)),' - ', num2str(position_out(1,2)));
-        if(size(position_out) > 1)
+                    contains = true;
+                    position_secondSeed(idx,1) = k{1}(1) + limit_upstream_seed-1;
+                    position_secondSeed(idx,2) = size(seed(i:end),2);
+                    idx = idx+1;
+             end
+         end
+            % Substract 1 from upper limit, because new 1 of substring is upper
+            % limit + relative position within new substring
+         position_out = unique(position_secondSeed,'rows');
+         temp = append(num2str(position_out(1,1)),' - ', num2str(position_out(1,2)));
+         if(size(position_out) > 1)
             for p=2:size(position_out,2)
                 temp = append(temp, ';',num2str(position_out(p,1)),' - ', num2str(position_out(p,2)));
             end
-        end
-        
-            
+         end
     end
 
-% Counts the percentage of AU 30 nt around seed
+    % Counts the percentage of AU 30 nt around seed
     function [percent_AU] = containsAU(pos, mRNASeq)
         limit_seed_dw = pos - 30;
         limit_seed_up = pos + 7 + 30;
@@ -295,35 +301,31 @@ end
         else
             roi = extractBetween(mRNASeq,1,size(mRNASeq,2));
         end
-
         counter_A_T = 0;
         roi_iteratorString = roi{1};
-
         for i=1:size(roi_iteratorString,2)
             if(roi_iteratorString(i) == 'A' || roi_iteratorString(i) == 'T')
                 counter_A_T = counter_A_T +1;
             end
         end
-        percent_AU = counter_A_T/size(roi_iteratorString,2);
-        
+        percent_AU = counter_A_T/size(roi_iteratorString,2);       
     end
 
-% Needs a flag, whether the mRNA sequence was only 3'UTR
+    % Needs a flag, whether the mRNA sequence was only 3'UTR
     function [behindStop] = isBehindStop(pos,flag)
         behindStop = false;
         if(flag)
             behindStop = pos > 15;
         end
-    end 
+     end 
 
-% Calculates the relative location of a position within an UTR and
-% calculates a simple weighting score. Zero for seed within first 15 nt of
-% UTR.
+    % Calculates the relative location of a position within an UTR and
+    % calculates a simple weighting score. Zero for seed within first 15 nt of
+    % UTR.
     function [relative_inUTR, isEffective] = whereInUTR(pos,mRNASeq)
         sizeUTR = size(mRNASeq,2);
         relative_inUTR = pos/sizeUTR;
         noEffect = 15/sizeUTR;
-        
         if(relative_inUTR > noEffect)
             if(relative_inUTR <= 0.25 || relative_inUTR >= 0.75)
                 isEffective = 2;
@@ -336,10 +338,25 @@ end
             isEffective = 0;
         end
     end
-    
-if(writeTo == 1)
-    writetable(table_out,nameTable,'WriteVariableNames',true)
-end
 
+    function [distance] = isPumilio(position,mRNASeq)
+        distance = 0;
+        k = regexp(mRNASeq,'TGTA[A,C,T,G]ATA');
+        if (~isempty(k))
+            distance = min(abs(k-position));
+        end
+    end
+
+    function [count] = numberPumilio(position,mRNASeq)
+        count = 0;
+        k = regexp(mRNASeq,'TGTA[A,C,T,G]ATA');
+        if (~isempty(k))
+            count = length(k);
+        end
+    end
+
+    if(writeTo == 1)
+        writetable(table_out,nameTable,'WriteVariableNames',true)
+    end
 end
 
