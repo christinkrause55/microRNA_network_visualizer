@@ -1,12 +1,14 @@
-#' Seed prediction of miRNAs for the regulation of target genes by base pairing with the 3' UTR sequence
+#' Seed prediction of microRNAs for the regulation of target genes by base pairing with the 3' UTR sequence
 #' 
 #' @description 
 #' seedPredictionTargetome returns a table with all information for the miRNA targetome
 #' 
 #' @details 
-#' This function predicts miRNA binding mode (8mer, 7mer or 6mer) and analysis parameters of pairing 
-#' conditions, such as AU content around the predicted seed, proximity to the canonical Pumilio binding motif,
-#' relative position of the seed in the 3'UTR and additional backbone binding.
+#' This function predicts miRNA binding mode (8mer, 7mer, 6mer or offset 6mer) and analysis parameters of pairing 
+#' conditions, such as AU content around the predicted seed, proximity to the canonical Pumilio binding motif if present,
+#' relative position of the seed in the 3'UTR and additional microRNA backbone binding. Furthermore, it can add these information
+#' to an adjacency matrix which was created from database knowledge about otherwise predicted and validated microRNA-mRNA 
+#' interactions. 
 #' 
 #' @param miRNA_ID name of a specific miRNA, such as hsa-miR-182-5p or mmu-miR-182-5p
 #' @param mRNA_ID name of a specific mRNA, such as "LRP6" in human or "Lrp6" in mouse
@@ -24,7 +26,7 @@
 #' 
 #' @author Christin Krause
 #'
-seedPredictionTargetome <- function(miRNA_ID = "hsa-miR-182-5p" ,
+miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
                                     mRNA_ID = "LRP6" ,
                                     nameOfTable = "output.csv",
                                     writeTo = FALSE,
@@ -40,14 +42,20 @@ seedPredictionTargetome <- function(miRNA_ID = "hsa-miR-182-5p" ,
   suppressMessages(library(stringi))
   suppressMessages(library(stringr))
   suppressMessages(library(dplyr))
+  #suppressMessages(library(biomaRt))
+  
+  ### setup biomart as an alternative to files
+  #ensembl <- useEnsembl(biomart = "genes")
   
   if(species == "hsa"){
+    # ensembl <- useDataset(dataset = "hsapiens_gene_ensembl", mart = ensembl)
     miRNA = readRDS(file = "human_miRNA.rds")
     mRNA = readRDS(file = "human_mRNA.rds")
     if(!ownAdj){
       adjacency = readRDS("miRNA_targetome_adjacency.rds")
     }
   }else if (species == "mmu"){
+    # ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", mart = ensembl)
     miRNA = readRDS(file = "murine_miRNA.rds")
     mRNA = readRDS(file = "murine_mRNA.rds")
     if(!ownAdj){
@@ -58,6 +66,7 @@ seedPredictionTargetome <- function(miRNA_ID = "hsa-miR-182-5p" ,
   }
   
   if(length(geneNames) > 1){
+    # mRNA <- getBM(attributes=c('external_gene_name','3utr'), filters = 'external_gene_name', values = geneNames, mart=ensembl)
     mRNA_reduced <- mRNA[0,]
     for (gene in geneNames){
       t <- which(mRNA$Gene == gene)
@@ -115,7 +124,7 @@ seedPredictionTargetome <- function(miRNA_ID = "hsa-miR-182-5p" ,
       return(NA)
     },
     finally = {
-      message(paste("Longes transcript for", geneName, "is", nchar(seq), sep = " "))
+      #message(paste("Longes transcript for", geneName, "is", nchar(seq), sep = " "))
       return(seq)
     })
     return(seq)
