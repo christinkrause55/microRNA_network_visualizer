@@ -27,7 +27,7 @@ pt <- 12
 genes <- getGenelist_mouse(pathway_list[[pt]])
 microRNA_list <- c("mmu-let-7e-5p","mmu-miR-16-5p","mmu-miR-34a-5p","mmu-miR-149-5p","mmu-miR-182-5p")
 
-ids <- c(ids, microRNA_list)
+ids <- c(genes$external_gene_name, microRNA_list)
 
 # create empty frame
 empty_table <- data.frame(matrix(1,4,length(ids)))
