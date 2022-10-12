@@ -12,3 +12,8 @@ This tool framework implemented in MATLAB (R2020a, TheMathWorks) was used for th
 A database connection and database which manages the underlying data will be published upon publication to ensure reproducible data usage. Currently only mouse based data processing is uploaded to this repo. A similar framework for human data will be uploaded after publication of the respective manuscript. 
 
 The getSeedPrediction.m script can be used as a standalone function. An implementation of the seed prediction tool which is independent of input sequences for the respective potential target gene UTR is also located in the R directory. 
+
+### Dependencies
+Python script for processing fasta transcript output from ensembl biomart needs numpy (v1.19.5) and pandas (v1.3.1) with python 3.9.
+
+The pipeline in R (4.1.0) needs further attached packages dplyr (1.0.10), igraph (1.3.5), stringr (1.4.1), stringi (1.7.6) and biomaRt (2.50.3) to the base packages stats, graphics, grDevices utils, datasets, methods and base.  
