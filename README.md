@@ -12,12 +12,11 @@ Nevertheless, also without own data, potential links can be visualised by creati
 Red edges indicate predicted (as 8mer or 7mer) target-microRNA interactions, whereby blue edges emerge from database entries. Key and title can be added in a customised fashion after execution of the drawPlot function. 
 
 ### Implementation in MATLAB
-This tool framework implemented in MATLAB (R2020a, TheMathWorks) was used for the high throughput analysis of microRNA microarray data sets.
-A database connection and database which manages the underlying data will be published upon publication to ensure reproducible data usage. Currently only mouse based data processing is uploaded to this repo. A similar framework for human data will be uploaded after publication of the respective manuscript. 
+This tool framework implemented in MATLAB (R2020a, TheMathWorks) was used for the high throughput analysis of microRNA microarray data sets using linear regression and correlation models. Besides evaluation, MATLAB was mainly used to generate adjacency matrices from database entries. Therefore, a comprehensive SQLite database was generated from publuc data repositories, which was used to query target genes from every mature microRNA. The resulting matrices for human and mouse can be found in the R directory. The connection and database which manages the underlying tables will be published upon publication to ensure reproducible data usage. Currently only the frame for mouse based data processing is uploaded to this repo. A similar framework for human data will be uploaded after publication of the respective manuscript. 
 
 The getSeedPrediction.m script can be used as a standalone function. An implementation of the seed prediction tool which is independent of input sequences for the respective potential target gene UTR is also located in the R directory. 
 
 ### Dependencies
-Python script for processing fasta transcript output from ensembl biomart needs numpy (v1.19.5) and pandas (v1.3.1) with python 3.9.
+Python script for processing fasta transcript output from ensembl biomart needs numpy (v1.19.5) and pandas (v1.3.1) with python 3.9. Resulting files are needed to use the seedPredicition functions in R (complete) or MATLAB (targeted) since these files contain sequence information. This script is included in case of working with other species than mouse or human. 
 
-The pipeline in R (4.1.0) needs further attached packages dplyr (1.0.10), igraph (1.3.5), stringr (1.4.1), stringi (1.7.6) and biomaRt (2.50.3) to the base packages stats, graphics, grDevices utils, datasets, methods and base.  
+The pipeline in R (4.1.0) needs further attached packages dplyr (1.0.10), igraph (1.3.5), stringr (1.4.1), stringi (1.7.6) and biomaRt (2.50.3) to the base packages stats, graphics, grDevices utils, datasets, methods and base.   
