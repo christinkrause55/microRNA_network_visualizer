@@ -16,6 +16,7 @@
 #' @param ownAdj boolean whether tool should use own matrix instead of predefined one
 #' @param adjacency path to or dataframe of an adjacency matrix NxM whitch N rows as miRNA and M columns for mRNA. 
 #' @param geneNames matrix with gene names of interest for a reduced set of mRNAs; set 'complete_mR' as TRUE for usage
+#' @param microRNANames matrix with microRNA names of interest for a reduced set of microRNAs; set 'complete_miRNA' as TRUE for usage
 #' @param complete_miR boolean if complete miRNA transcriptome should be checked
 #' @param complete_mRNA boolean of complete mRNA transcriptome should be checked as potential targetome
 #' @param nameOfTable name of the output table if 'writeTo is set TRUE
@@ -31,9 +32,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
                                     nameOfTable = "output.csv",
                                     writeTo = FALSE,
                                     species = "hsa",
-                                    adjacency = readRDS("miRNA_targetome_adjacency.rds"),
+                                    adjacency = readRDS("miRNA_targetome_adjacency2.rds"),
                                     ownAdj = FALSE,
                                     geneNames = "",
+                                    microRNANames = "",
                                     complete_miR = FALSE,
                                     complete_mR = FALSE,
                                     addToAdjacency = FALSE)
@@ -52,7 +54,7 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
     miRNA = readRDS(file = "human_miRNA.rds")
     mRNA = readRDS(file = "human_mRNA.rds")
     if(!ownAdj){
-      adjacency = readRDS("miRNA_targetome_adjacency.rds")
+      adjacency = readRDS("miRNA_targetome_adjacency2.rds")
     }
   }else if (species == "mmu"){
     # ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", mart = ensembl)
@@ -73,6 +75,15 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
       mRNA_reduced <- rbind(mRNA_reduced, mRNA[t,])
     }
     mRNA <- mRNA_reduced
+  }
+  
+  if(length(microRNANames) > 1){
+    miRNA_reduced <- miRNA[0,]
+    for (gene in microRNANames){
+      t <- which(miRNA$TranscriptID == gene)
+      miRNA_reduced <- rbind(miRNA_reduced, miRNA[t,])
+    }
+    miRNA <- miRNA_reduced
   }
   
   ### Basic function for sequence processing
@@ -238,7 +249,6 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
           contains <- TRUE
           pos_second_seed <-
             append(pos_second_seed, positions + limit_upstream_seed - 1)
-          message(i)
           size_second_seed <-
             append(size_second_seed, nchar(substring(seed, i, nchar(seed))))
         }
@@ -298,6 +308,7 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
   # Add information from targetome to adjacency matrix
   addPredictionToAdjacency <- function(targetome, adj){
     targetome <- targetome[!(is.na(targetome$Pos_8mer) & is.na(targetome$Pos_7mer_m8) & is.na(targetome$Pos_7mer_A1) & is.na(targetome$Pos_6mer)),]
+    targetome <- targetome[!(is.na(targetome$Pos_8mer) & is.na(targetome$Pos_7mer_m8) & is.na(targetome$Pos_7mer_A1)),]
     r_adj <- rownames(adj)
     c_adj <- strsplit(colnames(adj), split ="_")
     # To find matches betweem targetome and adj
@@ -311,8 +322,14 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
       r_pos <- which(r_adj == miR)
       c <- unique(targetome$mRNA[targetome$miRNA == miR])
       for(mR in c){
-        c_pos <- which(new_c_adj == mR)
-        adj[r_pos, c_pos] <- 2
+        if(mR %in% new_c_adj){
+          c_pos <- which(new_c_adj == mR)
+          if(!is.null(adj[r_pos, c_pos])){
+            if(adj[r_pos, c_pos] == 0){
+              adj[r_pos, c_pos] <- 2
+            }
+          }
+        }
       }
     }
     return(adj)

@@ -11,7 +11,10 @@
 #' just fill the dataframe with ones. Data can be prepared by the preparation function.
 #' @param adjacency An adjacency matrix, which could be created by the miRNA_targetome_predicition function. Row should
 #' contain microRNA names, columns should contain target gene names.
-#' @param strict Boolean to apply a strict filter of negative estimate and significant p value 
+#' @param strict Boolean to apply a strict filter of negative estimate and significant p value
+#' @param threshold Adjusted p value filter threshold for a strict plotting
+#' @param layout Indicates, which layout the plot should have. Use ["default","circle","tree"] 
+#' @param emptymode Boolean to idicate whether real count data was used
 #' 
 #' @return A plot with the regulatory network
 #' 
@@ -20,9 +23,16 @@
 drawPlot <-
   function(microRNA_list = c("hsa-miR-182-5p"),
            counts,
-           adjacency, strict=FALSE) {
+           adjacency, strict=FALSE, threshold = 0.05,
+           layout = "default", emptymode = FALSE) {
+    
     suppressMessages(library(dplyr))
     suppressMessages(library(igraph))
+    
+    if(strict & emptymode){
+      message("This won't work, strict is reversed")
+      strict <- FALSE
+    }
     
     # Setup correlation dataframes
     final_results_complete <- data.frame()
@@ -48,11 +58,16 @@ drawPlot <-
       # Perform correlation analysis
       miR_position <- which(colnames(counts) == microRNA_name)
       for (k in 1:ncol(counts)) {
-        test <-
-          cor.test(as.numeric(counts[, k]),
-                   counts[, miR_position])
-        RNAseq_correlate_p[1, k] <- test$p.value
-        RNAseq_correlate_r[1, k] <- test$estimate
+        if(!emptymode){
+          test <-
+            cor.test(as.numeric(counts[, k]),
+                     counts[, miR_position])
+          RNAseq_correlate_p[1, k] <- test$p.value
+          RNAseq_correlate_r[1, k] <- test$estimate
+        }else{
+          RNAseq_correlate_p[1, k] <- 1
+          RNAseq_correlate_r[1, k] <- -0.01
+        }
       }
       
       RNAseq_correlate_pt <- data.frame(t(RNAseq_correlate_p))
@@ -65,7 +80,7 @@ drawPlot <-
       # Filter and extract relevant regulator - target interactions
       if(strict){
       relevant <-
-        RNAseq_correlate_pt[RNAseq_correlate_pt$padj < 0.05 &
+        RNAseq_correlate_pt[RNAseq_correlate_pt$padj < threshold &
                              RNAseq_correlate_pt$estimate < 0 , ]
       }else{
         relevant <- RNAseq_correlate_pt
@@ -103,7 +118,7 @@ drawPlot <-
     net <- graph(edges = g, directed = FALSE)
     
     v_names <- rep("target", length(V(net)$name))
-    v_size <- rep(2.5, length(V(net)$name))
+    v_size <- rep(4, length(V(net)$name))
     V_label_size <- rep(0.75, length(V(net)$name))
     for (microRNA_name in microRNA_list) {
       v_names[which(V(net)$name == microRNA_name)] <- 'miRNA'
@@ -118,8 +133,12 @@ drawPlot <-
       if (final_results_complete$estimate[i] > 0) {
         e_size[i] <- 1
         e_color[i] <- 1
-      } else{
-        e_size[i] <- final_results_complete$estimate[i] * (-1.75) + 3
+      }else{
+        if(!emptymode){
+          e_size[i] <- final_results_complete$estimate[i] * (-1.75) + 3
+        }else{
+          e_size[i] <- 1
+        }
         if(final_results_complete$target[i] == 1){
           e_color[i] <- 2
         }else{
@@ -128,17 +147,50 @@ drawPlot <-
       }
     }
     
-    plot(
-      net,
-      vertex.size = v_size,
-      vertex.color = c("coral1", "cornflowerblue")[1 + as.numeric(!V(net)$type ==
-                                                                    "miRNA")],
-      vertex.label.color = "black",
-      vertex.frame.color = "azure",
-      vertex.label.dist = 0.5,
-      vertex.label.cex = V_label_size,
-      edge.color = c("darkgrey","cornflowerblue","cornflowerblue")[e_color],
-      edge.width = e_size
-    )
     
+    if(layout == "default"){
+      plot(
+        net,
+        vertex.size = v_size,
+        vertex.color = c("goldenrod2", "cornflowerblue")[1 + as.numeric(!V(net)$type ==
+                                                                      "miRNA")],
+        vertex.label.color = "black",
+        vertex.label.degree = 45,
+        vertex.frame.color = "azure",
+        vertex.label.dist = 0.5,
+        vertex.label.cex = V_label_size,
+        edge.color = c("darkgrey","cornflowerblue","firebrick1")[e_color],
+        edge.width = e_size
+      )
+    }else if(layout == "circle"){
+      plot(
+        net,
+        vertex.size = v_size,
+        vertex.color = c("goldenrod2", "cornflowerblue")[1 + as.numeric(!V(net)$type ==
+                                                                      "miRNA")],
+        layout=layout_in_circle,
+        vertex.label.color = "black",
+        vertex.label.degree = 45,
+        vertex.frame.color = "azure",
+        vertex.label.dist = 0.5,
+        vertex.label.cex = V_label_size,
+        edge.color = c("darkgrey","cornflowerblue","firebrick1")[e_color],
+        edge.width = e_size
+      )
+    } else{
+      plot(
+        net,
+        vertex.size = v_size,
+        vertex.color = c("goldenrod2", "cornflowerblue")[1 + as.numeric(!V(net)$type ==
+                                                                      "miRNA")],
+        layout=layout_as_tree,
+        vertex.label.color = "black",
+        vertex.label.degree = 45,
+        vertex.frame.color = "azure",
+        vertex.label.dist = 0.5,
+        vertex.label.cex = V_label_size,
+        edge.color = c("darkgrey","cornflowerblue","firebrick1")[e_color],
+        edge.width = e_size
+      )
+    }
   }
