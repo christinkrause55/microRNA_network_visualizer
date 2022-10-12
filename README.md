@@ -9,6 +9,8 @@ Nevertheless, also without own data, potential links can be visualised by creati
 
 ![plot](https://github.com/christinkrause55/microRNA_network_visualizer/blob/main/predictionplot.png)
 
+Red edges indicate predicted (as 8mer or 7mer) target-microRNA interactions, whereby blue edges emerge from database entries. Key and title can be added in a customised fashion after execution of the drawPlot function. 
+
 ### Implementation in MATLAB
 This tool framework implemented in MATLAB (R2020a, TheMathWorks) was used for the high throughput analysis of microRNA microarray data sets.
 A database connection and database which manages the underlying data will be published upon publication to ensure reproducible data usage. Currently only mouse based data processing is uploaded to this repo. A similar framework for human data will be uploaded after publication of the respective manuscript. 
