@@ -7,6 +7,8 @@ These functions, containing a prediction and visualisation method, work for mous
 
 Nevertheless, also without own data, potential links can be visualised by creating an empty data frame with genes and microRNAs of interest. An example file for common metabolic genes is supplied as an example script. 
 
+![plot](https://github.com/christinkrause55/microRNA_network_visualizer/blob/main/predictionplot.png)
+
 ### Implementation in MATLAB
 This tool framework implemented in MATLAB (R2020a, TheMathWorks) was used for the high throughput analysis of microRNA microarray data sets.
 A database connection and database which manages the underlying data will be published upon publication to ensure reproducible data usage. Currently only mouse based data processing is uploaded to this repo. A similar framework for human data will be uploaded after publication of the respective manuscript. 
