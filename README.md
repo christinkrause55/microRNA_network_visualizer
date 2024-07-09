@@ -20,3 +20,8 @@ The getSeedPrediction.m script can be used as a standalone function. An implemen
 Python script for processing fasta transcript output from ensembl biomart needs numpy (v1.19.5) and pandas (v1.3.1) with python 3.9. Resulting files are needed to use the seedPredicition functions in R (complete) or MATLAB (targeted) since these files contain sequence information. This script is included in case of working with other species than mouse or human. 
 
 The pipeline in R (4.1.0) needs further attached packages dplyr (1.0.10), igraph (1.3.5), stringr (1.4.1), stringi (1.7.6) and biomaRt (2.50.3) to the base packages stats, graphics, grDevices utils, datasets, methods and base.   
+
+### Publication
+The tool was first mentioned in     
+Krause Christin, Britsemmer Jan H., Bernecker Miriam, Molenaar Anna, Taege Natalie, Lopez-Alcantara Nuria, Geißler Cathleen, Kaehler Meike, Iben Katharina, Judycka Anna, Wagner Jonas, Wolter Stefan, Mann Oliver, Pfluger Paul T., Cascorbi Ingolf, Lehnert Hendrik, Stemmer Kerstin, Schriever Sonja C., Kirchner Henriette (2023) Liver microRNA transcriptome reveals miR-182 as link between type 2 diabetes and fatty liver disease in obesity eLife 12:RP92075
+https://doi.org/10.7554/eLife.92075.2
