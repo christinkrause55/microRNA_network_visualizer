@@ -26,4 +26,4 @@ The tool was first mentioned in
 Krause Christin, Britsemmer Jan H., Bernecker Miriam, Molenaar Anna, Taege Natalie, Lopez-Alcantara Nuria, Geißler Cathleen, Kaehler Meike, Iben Katharina, Judycka Anna, Wagner Jonas, Wolter Stefan, Mann Oliver, Pfluger Paul T., Cascorbi Ingolf, Lehnert Hendrik, Stemmer Kerstin, Schriever Sonja C., Kirchner Henriette (2023) Liver microRNA transcriptome reveals miR-182 as link between type 2 diabetes and fatty liver disease in obesity eLife 12:RP92075
 https://doi.org/10.7554/eLife.92075.2
 
-The SQLite database with the regression results is availabe as hsaObeseLiver_miRNA_regression_results.
+The SQLite database with the regression results is availabe as hsaObeseLiver_miRNA_regression_results. All scripts which were used to perform the statistical analysis for the microRNA microarray in this publication can be found in the matlab_publication directory. 
