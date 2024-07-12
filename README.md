@@ -12,7 +12,7 @@ Nevertheless, also without own data, potential links can be visualised by creati
 Red edges indicate predicted (as 8mer or 7mer) target-microRNA interactions, whereby blue edges emerge from database entries. Key and title can be added in a customised fashion after execution of the drawPlot function. 
 
 ### Implementation in MATLAB
-This tool framework implemented in MATLAB (R2020a, TheMathWorks) was used for the high throughput analysis of microRNA microarray data sets using linear regression and correlation models. Besides evaluation, MATLAB was mainly used to generate adjacency matrices from database entries. Therefore, a comprehensive SQLite database was generated from publuc data repositories, which was used to query target genes from every mature microRNA. The resulting matrices for human and mouse can be found in the R directory. 
+This tool framework implemented in MATLAB (R2020a, TheMathWorks) was used for the high throughput analysis of microRNA microarray data sets using linear regression and correlation models. Besides evaluation, MATLAB was mainly used to generate adjacency matrices from database entries. Therefore, a comprehensive SQLite database was generated from public data repositories, which was used to query target genes from every mature microRNA. The resulting matrices for human and mouse can be found in the R directory. 
 
 The getSeedPrediction.m script can be used as a standalone function. An implementation of the seed prediction tool which is independent of input sequences for the respective potential target gene UTR is also located in the R directory. 
 
