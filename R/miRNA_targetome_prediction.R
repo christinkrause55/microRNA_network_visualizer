@@ -48,11 +48,25 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
   
   ### setup biomart as an alternative to files
   #ensembl <- useEnsembl(biomart = "genes")
+  miRNA = readRDS(file = "human_miRNA.rds")
+  mRNA = readRDS(file = "human_mRNA.rds")
   
   if(species == "hsa"){
     # ensembl <- useDataset(dataset = "hsapiens_gene_ensembl", mart = ensembl)
+    # IDEA:   Also include CDS, 5'UTR and promoter regions
+    # ISSUE:  Fails due to network connection issues; Workaround as local database for 3'UTRs
     miRNA = readRDS(file = "human_miRNA.rds")
     mRNA = readRDS(file = "human_mRNA.rds")
+    
+    # Using biomart:
+    # UTR_3 <- getBM(attributes = c('external_gene_name','3utr'),
+    #               +       mart = ensembl, filters = 'external_gene_name', values = mRNA_ID)
+    # UTR_5 <- getBM(attributes = c('external_gene_name','5utr'),
+    #       mart = ensembl, filters = 'external_gene_name, values = mRNA_ID)
+    # trx   <- getBM(attributes = c('external_gene_name','transcript_exon_intron'),
+    #       mart = ensembl, filters = 'external_gene_name', values = mRNA_ID)
+    # promo <- getSequence(id = mRNAID, type = "external_gene_name", seqType = "gene_flank", upstream=1500, mart=ensembl)
+    
     if(!ownAdj){
       adjacency = readRDS("miRNA_targetome_adjacency2.rds")
     }
@@ -135,11 +149,24 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
       return(NA)
     },
     finally = {
-      #message(paste("Longes transcript for", geneName, "is", nchar(seq), sep = " "))
+      message(paste("Longes transcript for", geneName, "is", nchar(seq), sep = " "))
       return(seq)
     })
     return(seq)
   }
+  
+  # Generate lookup table for thermodynamics
+  # kJ/mol
+  energy <- list("AA" = -4.26, "AT" = -3.67, 
+                 "TT" = -4.26, "GT" = -6.09,
+                 "TA" = -2.50, "CA" = -6.12,
+                 "TC" = -5.40, "CT" = -5.40,
+                 "TG" = -6.09, "AC" = -6.12,
+                 "GA" = -5.51, "CG" = -9.07,
+                 "AG" = -5.51, "CC" = -7.66,
+                 "GC" = -9.36, "GG" = -7.66,
+                 "A" = 4.31, "T" = 4.31, 
+                 "C" = 4.05, "G" = 4.05)
   
   ### Functions for seed match prediction
   ### returns positions: Fist half represents start, second half respective end positions.
@@ -174,6 +201,9 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
     function(miRNA_transcript, mRNA_transcript) {
       positions <-
         unlist(str_locate_all(mRNA_transcript, substring(miRNA_transcript, 1, 6)))
+      #message(mRNA_transcript)
+      #message(substring(miRNA_transcript, 1, 6))
+      #message(miRNA_transcript)
       return(positions)
     }
   
@@ -278,10 +308,11 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
     }
   
   contains_prox_same <- function(targetome) {
-    
+    # TO DO
   }
   
   contains_prox_other <- function(targ) {
+    # TO DO
     matches <- which(!is.na(targ$Pos_8mer) | !is.na(targ$Pos_7mer_m8) | !is.na(targ$Pos_7mer_A1) | !is.na(targ$Pos_6mer))
     for(m in matches){
       mOI <- which(!is.na(targ[m,3:6])) + 2
@@ -304,11 +335,120 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
     }
   }
   
+  calculateEnergy <- function(seq, mat){
+    # seq needs to be revcom string of matching string
+    # mat is match_string
+    e <- 0
+    split <- strsplit(mat,'')[[1]]
+    for(s in 1:nchar(mat)){
+
+      # Case 1:   s within binding, so m[s-1] = 1 and m[s+1] = 1, but neither s = 1 and s = end
+      # Case 2:   s begin of binding, so m[s-1] = 0 and m[s+1] = 1, but neither s = 1 and s = end
+      # Case 3:   s end of binding, so m[s-1] = 1 and m[s+1] = 0, but neither s = 1 and s = 0 (included in before)
+      # Case 6:   s alone, so m[s-1] = 0 and m[s+1] = 0, but neither s = 1 and s = end (included in terminal)
+      
+      # Case 4:   s begin of binding, so m[s+1] = 1 but s = 1 and not s = end (extreme position)
+      # Case 5:   s end of binding, so m[s-1] = 1 but s = end and not s = 1 (extreme position)
+      # Case 7:   s also terminal, so either m[s+1] = 0 or m[s-1] = 0 or both m[s+1] = 0 or m[s-1] = 0 
+      #           (equals s alone, case 6 without extreme positions) 
+      if(s != 1 & s != nchar(mat) & split[s] == 1){
+        if(split[s-1] == 1 & split[s+1] == 1){
+          e <- e + energy[[which(names(energy) == substr(seq,s,s+1))]]
+        }else if (split[s-1] == 0 & split[s+1] == 1){
+          e <- e + energy[[which(names(energy) == substr(seq,s,s))]]
+        }else if (split[s-1] == 1 & split[s+1] == 0){
+          e <- e + energy[[which(names(energy) == substr(seq,s,s))]]
+        }else if (split[s-1] == 0 & split[s+1] == 0){
+          e <- e + energy[[which(names(energy) == substr(seq,s,s))]]
+        }
+      } else if (s == 1 & s != nchar(mat) & split[s] == 1){
+
+        if(split[s+1] == 1){
+          e <- e + energy[[which(names(energy) == substr(seq,s,s+1))]]
+        } else if (split[s+1] == 0){
+          e <- e + energy[[which(names(energy) == substr(seq,s,s))]]
+        }
+      } else if (s != 1  & s == nchar(mat) & split[s] == 1){
+        if (split[s-1] == 0){
+          e <- e + energy[[which(names(energy) == substr(seq,s,s))]]
+        }
+        if (split[s-1] == 1){
+          e <- e + energy[[which(names(energy) == substr(seq,s,s))]]
+        }
+      }
+
+    }
+    return(e)
+  }
+  
+  calculateEnergy_cmpl <- function(seq){
+    e <- 0
+    split <- strsplit(seq,'')[[1]]
+    for(s in 1:nchar(seq)){
+      if(s == 1 | s == nchar(seq)){
+        e <- e + energy[[which(names(energy) == split[s])]]
+      } else {
+        m <- gsub(' ', '', paste(split[s],split[s+1]))
+        e <- e + energy[[which(names(energy) == m)]]
+      }
+    }
+    return(e)
+  }
+  
+  calculateMatchingString <- function(seq, transcript, pos){
+    # Generate reverse complement seq of microRNA transcript seq
+    seq <- stri_reverse(seq)
+    single <- unlist(strsplit(seq, ''))
+    revcom <- as.character()
+    for (i in 1:length(single)) {
+      if (single[i] == 'A')
+        revcom <- paste(revcom, 'T')
+      if (single[i] == 'C')
+        revcom <- paste(revcom, 'G')
+      if (single[i] == 'T' | single[i] == 'U')
+        revcom <- paste(revcom, 'A')
+      if (single[i] == 'G')
+        revcom <- paste(revcom, 'C')
+    }
+    revcom <- gsub(' ', '', revcom)
+    # gather relevant substring on transcript seq
+    # pos is result of a contains_6mer function, which returns [start end]
+    # 6mer pos input    pos[p]+5+1
+    # 6meroff input     pos[p]+5+2
+    # 8mer pos input    pos[p]+7
+    # 7merA1 pos input  pos[p]+6
+    # 7merm8 pos input  pos[p]+6+1
+    if(pos-nchar(revcom)+1 > 0){
+      transcript_match <- substring(transcript,pos-nchar(revcom)+1,pos)
+    }else{
+      return(list("energy" = 0, "match" = "-", "relative_energy" = 0))
+    }
+    
+    
+    single_tx <- unlist(strsplit(transcript_match, ''))
+    single_mi <- unlist(strsplit(revcom, ''))
+    
+    match_string = ""
+    
+    for (n in 1:length(single_mi)){
+      if(!is.na(single_mi[n]) & !is.na(single_tx[n])){
+        if(single_mi[n] == single_tx[n]){
+          match_string = paste(match_string,"1",sep = "")
+        }else{
+          match_string = paste(match_string,"0",sep = "")
+        }
+      }
+    }
+    energy <- calculateEnergy(seq = revcom, mat = match_string)
+    rel_energy <- energy/calculateEnergy_cmpl(seq = revcom)
+    return(list("energy" = energy, "match" = match_string, "relative_energy" = rel_energy))
+  }
+  
   ### Functions for handling prediction output
   # Add information from targetome to adjacency matrix
   addPredictionToAdjacency <- function(targetome, adj){
-    targetome <- targetome[!(is.na(targetome$Pos_8mer) & is.na(targetome$Pos_7mer_m8) & is.na(targetome$Pos_7mer_A1) & is.na(targetome$Pos_6mer)),]
-    targetome <- targetome[!(is.na(targetome$Pos_8mer) & is.na(targetome$Pos_7mer_m8) & is.na(targetome$Pos_7mer_A1)),]
+    targetome <- targetome[!(is.na(targetome$Pos_8mer) & is.na(targetome$Pos_7mer_m8) & is.na(targetome$Pos_7mer_A1) & is.na(targetome$Pos_6mer) & is.na(targetome$Pos_offset_6mer)),]
+    #targetome <- targetome[!(is.na(targetome$Pos_8mer) & is.na(targetome$Pos_7mer_m8) & is.na(targetome$Pos_7mer_A1)),]
     r_adj <- rownames(adj)
     c_adj <- strsplit(colnames(adj), split ="_")
     # To find matches betweem targetome and adj
@@ -324,7 +464,7 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
       for(mR in c){
         if(mR %in% new_c_adj){
           c_pos <- which(new_c_adj == mR)
-          if(!is.null(adj[r_pos, c_pos])){
+          if(!is.null(adj[r_pos, c_pos]) & length(adj[r_pos, c_pos]) ==1){
             if(adj[r_pos, c_pos] == 0){
               adj[r_pos, c_pos] <- 2
             }
@@ -351,7 +491,9 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
       "miR_binding_backbone" = as.character(),
       "relative_within_UTR" = as.numeric(),
       "Pumilio_min_dist" = as.numeric(),
-      "Pumilio_count" = as.numeric()
+      "Pumilio_count" = as.numeric(),
+      "binding_energy" = as.numeric(), # needs to be added to each prediction
+      "match" = as.character() 
     )
   
   ### Start seed match
@@ -390,6 +532,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+7)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+7)$match
           table_idx <- table_idx + 1
         }
       }
@@ -413,6 +559,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$match
           table_idx <- table_idx + 1
         }
       }
@@ -436,6 +586,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$match
           table_idx <- table_idx + 1
         }
       }
@@ -459,6 +613,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+1)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+1)$match
           table_idx <- table_idx + 1
         }
       }
@@ -482,6 +640,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+2)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+2)$match
           table_idx <- table_idx + 1
         }
       }
@@ -505,9 +667,7 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
         mRNA$Gene[mR],
         sep = " "
       ))
-      
       seed <- process_seed(miRNA$Sequence[miRNA$TranscriptID == miRNA_ID])
-      
       miR <- which(miRNA$TranscriptID == miRNA_ID)
       mRNA_ID <- mRNA$Gene[mR]
       
@@ -530,6 +690,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+7)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+7)$match
           table_idx <- table_idx + 1
         }
       }
@@ -553,6 +717,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$match
           table_idx <- table_idx + 1
         }
       }
@@ -576,6 +744,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6+1)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6+1)$match
           table_idx <- table_idx + 1
         }
       }
@@ -599,6 +771,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+1)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+1)$match
           table_idx <- table_idx + 1
         }
       }
@@ -622,6 +798,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
             contains_Pumilio_count(positions[p], gene_sequence)
           targetome$miR_binding_backbone[table_idx] <-
             contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+          targetome$binding_energy[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+2)$energy
+          targetome$match[table_idx] <- 
+            calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+2)$match
           table_idx <- table_idx + 1
         }
       }
@@ -630,6 +810,7 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
   else if (!complete_miR & !complete_mR) {
     # Check specific mRNA with specific miRNA
     message("CASE3: Check specific mRNAs for a specific miRNA")
+    miR <- which(miRNA$TranscriptID == miRNA_ID)
     table_idx = 1
     gene_sequence <- process_mRNA(mRNA_ID, mRNA)
     message(paste("check binding for", miRNA_ID, "on", mRNA_ID, sep = " "))
@@ -654,6 +835,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
           contains_Pumilio_count(positions[p], gene_sequence)
         targetome$miR_binding_backbone[table_idx] <-
           contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+        targetome$binding_energy[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+7)$energy
+        targetome$match[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+7)$match
         table_idx <- table_idx + 1
       }
     }
@@ -675,6 +860,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
           contains_Pumilio_count(positions[p], gene_sequence)
         targetome$miR_binding_backbone[table_idx] <-
           contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+        targetome$binding_energy[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$energy
+        targetome$match[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$match
         table_idx <- table_idx + 1
       }
     }
@@ -697,6 +886,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
           contains_Pumilio_count(positions[p], gene_sequence)
         targetome$miR_binding_backbone[table_idx] <-
           contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+        targetome$binding_energy[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6+1)$energy
+        targetome$match[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6+1)$match
         table_idx <- table_idx + 1
       }
     }
@@ -719,6 +912,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
           contains_Pumilio_count(positions[p], gene_sequence)
         targetome$miR_binding_backbone[table_idx] <-
           contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+        targetome$binding_energy[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+1)$energy
+        targetome$match[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+1)$match
         table_idx <- table_idx + 1
       }
     }
@@ -727,6 +924,8 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
       contains_offset_6mer(miRNA_transcript = seed, mRNA_transcript = gene_sequence)
     if (length(positions > 0)) {
       for (p in 1:(length(positions) / 2)) {
+        message(paste("located in if", p, sep = " "))
+        message(paste("Using", miR, sep = " "))
         targetome[nrow(targetome) + 1,] <- NA
         targetome$Pos_offset_6mer[table_idx] <- positions[p]
         targetome$miRNA[table_idx] <- miRNA$TranscriptID[miR]
@@ -741,11 +940,13 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
           contains_Pumilio_count(positions[p], gene_sequence)
         targetome$miR_binding_backbone[table_idx] <-
           contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+        targetome$binding_energy[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+2)$energy
+        targetome$match[table_idx] <- 
+          calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+2)$match
         table_idx <- table_idx + 1
       }
     }
-    
-    
   }
   else {
     # Check all with all
@@ -784,6 +985,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
               contains_Pumilio_count(positions[p], gene_sequence)
             targetome$miR_binding_backbone[table_idx] <-
               contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+            targetome$binding_energy[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+7)$energy
+            targetome$match[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+7)$match
             table_idx <- table_idx + 1
           }
         }
@@ -807,6 +1012,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
               contains_Pumilio_count(positions[p], gene_sequence)
             targetome$miR_binding_backbone[table_idx] <-
               contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+            targetome$binding_energy[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$energy
+            targetome$match[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6)$match
             table_idx <- table_idx + 1
           }
         }
@@ -830,6 +1039,10 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
               contains_Pumilio_count(positions[p], gene_sequence)
             targetome$miR_binding_backbone[table_idx] <-
               contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+            targetome$binding_energy[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6+1)$energy
+            targetome$match[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+6+1)$match
             table_idx <- table_idx + 1
           }
         }
@@ -853,31 +1066,39 @@ miRNA_targetome_prediction <- function(miRNA_ID = "hsa-miR-182-5p" ,
               contains_Pumilio_count(positions[p], gene_sequence)
             targetome$miR_binding_backbone[table_idx] <-
               contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+            targetome$binding_energy[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+1)$energy
+            targetome$match[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+1)$match
             table_idx <- table_idx + 1
           }
         }
-      }
-      
-      positions <-
-        contains_offset_6mer(miRNA_transcript = seed,
-                             mRNA_transcript = gene_sequence)
-      if (length(positions > 0)) {
-        for (p in 1:(length(positions) / 2)) {
-          targetome[nrow(targetome) + 1,] <- NA
-          targetome$Pos_offset_6mer[table_idx] <- positions[p]
-          targetome$miRNA[table_idx] <- miRNA$TranscriptID[miR]
-          targetome$mRNA[table_idx] <- mRNA_ID
-          targetome$AU_content_30nt[table_idx] <-
-            contains_AU(positions[p], gene_sequence)
-          targetome$relative_within_UTR[table_idx] <-
-            contains_relative(positions[p], gene_sequence)
-          targetome$Pumilio_min_dist[table_idx] <-
-            contains_Pumilio(positions[p], gene_sequence)
-          targetome$Pumilio_count[table_idx] <-
-            contains_Pumilio_count(positions[p], gene_sequence)
-          targetome$miR_binding_backbone[table_idx] <-
-            contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
-          table_idx <- table_idx + 1
+        
+        positions <-
+          contains_offset_6mer(miRNA_transcript = seed,
+                               mRNA_transcript = gene_sequence)
+        if (length(positions > 0)) {
+          for (p in 1:(length(positions) / 2)) {
+            targetome[nrow(targetome) + 1,] <- NA
+            targetome$Pos_offset_6mer[table_idx] <- positions[p]
+            targetome$miRNA[table_idx] <- miRNA$TranscriptID[miR]
+            targetome$mRNA[table_idx] <- mRNA_ID
+            targetome$AU_content_30nt[table_idx] <-
+              contains_AU(positions[p], gene_sequence)
+            targetome$relative_within_UTR[table_idx] <-
+              contains_relative(positions[p], gene_sequence)
+            targetome$Pumilio_min_dist[table_idx] <-
+              contains_Pumilio(positions[p], gene_sequence)
+            targetome$Pumilio_count[table_idx] <-
+              contains_Pumilio_count(positions[p], gene_sequence)
+            targetome$miR_binding_backbone[table_idx] <-
+              contains_backbone_binding(positions[p], miRNA$Sequence[miR], gene_sequence)
+            targetome$binding_energy[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+2)$energy
+            targetome$match[table_idx] <- 
+              calculateMatchingString(miRNA$Sequence[miR],gene_sequence,positions[p]+5+2)$match
+            table_idx <- table_idx + 1
+          }
         }
       }
     }

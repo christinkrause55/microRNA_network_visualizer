@@ -14,7 +14,7 @@
 #' @param strict Boolean to apply a strict filter of negative estimate and significant p value
 #' @param threshold Adjusted p value filter threshold for a strict plotting
 #' @param layout Indicates, which layout the plot should have. Use ["default","circle","tree"] 
-#' @param emptymode Boolean to idicate whether real count data was used
+#' @param emptymode Boolean to indicate whether real count data was used
 #' 
 #' @return A plot with the regulatory network
 #' 
@@ -95,7 +95,8 @@ drawPlot <-
       for (gene in rownames(relevant)) {
         if (gene %in% new_c_adj) {
           relevant$target[rownames(relevant) == gene] <-
-            adjacency[which(rownames(adjacency) == microRNA_name), which(new_c_adj == gene)]
+            adjacency[which(rownames(adjacency) == microRNA_name), which(new_c_adj == gene)][1]
+
           relevant$regulator[rownames(relevant) == gene] <-
             microRNA_name
         }
@@ -115,82 +116,92 @@ drawPlot <-
       g <- append(g, final_results_complete$gene[i])
     }
     
-    net <- graph(edges = g, directed = FALSE)
-    
-    v_names <- rep("target", length(V(net)$name))
-    v_size <- rep(4, length(V(net)$name))
-    V_label_size <- rep(0.75, length(V(net)$name))
-    for (microRNA_name in microRNA_list) {
-      v_names[which(V(net)$name == microRNA_name)] <- 'miRNA'
-      v_size[which(V(net)$name == microRNA_name)] <- 10
-      V_label_size[which(V(net)$name == microRNA_name)] <- 1
-    }
-    V(net)$type <- v_names
-    
-    e_size <- numeric()
-    e_color <- numeric()
-    for (i in 1:nrow(final_results_complete)) {
-      if (final_results_complete$estimate[i] > 0) {
-        e_size[i] <- 1
-        e_color[i] <- 1
-      }else{
-        if(!emptymode){
-          e_size[i] <- final_results_complete$estimate[i] * (-1.75) + 3
-        }else{
+    if(!is.na(g[1])){
+      net <- graph(edges = g, directed = FALSE)
+      
+      v_names <- rep("target", length(V(net)$name))
+      v_size <- rep(10, length(V(net)$name))
+      V_label_size <- rep(1.25, length(V(net)$name))
+      for (microRNA_name in microRNA_list) {
+        v_names[which(V(net)$name == microRNA_name)] <- 'miRNA'
+        v_size[which(V(net)$name == microRNA_name)] <- 7.5
+        V_label_size[which(V(net)$name == microRNA_name)] <- 1.5
+      }
+      V(net)$type <- v_names
+      
+      e_size <- numeric()
+      e_color <- numeric()
+      for (i in 1:nrow(final_results_complete)) {
+        if (final_results_complete$estimate[i] > 0) {
           e_size[i] <- 1
-        }
-        if(final_results_complete$target[i] == 1){
-          e_color[i] <- 2
+          e_color[i] <- 1
         }else{
-          e_color[i] <- 3
+          if(!emptymode){
+            if(final_results_complete$estimate[i] > 0){
+              e_size[i] <- (final_results_complete$estimate[i] * 10) + 1
+            }else{
+              e_size[i] <- (final_results_complete$estimate[i] * -10) + 1
+            }
+            
+          }else{
+            e_size[i] <- 1
+          }
+          if(final_results_complete$target[i] == 1){
+            e_color[i] <- 2
+          }else{
+            e_color[i] <- 3
+          }
         }
       }
+      e_size[e_size>5] <- 5
+      
+      if(layout == "default"){
+        plot(
+          net,
+          vertex.size = v_size,
+          vertex.color = c("goldenrod2", "moccasin")[1 + as.numeric(!V(net)$type ==
+                                                                        "miRNA")],
+          vertex.label.color = "black",
+          vertex.label.degree = 45,
+          vertex.frame.color = "azure",
+          vertex.label.dist = 0.5,
+          vertex.label.cex = V_label_size,
+          edge.color = c("darkgrey","steelblue1","red1")[e_color],
+          edge.width = e_size
+        )
+      }else if(layout == "circle"){
+        plot(
+          net,
+          vertex.size = v_size,
+          vertex.color = c("coral", "lightskyblue")[1 + as.numeric(!V(net)$type ==
+                                                                        "miRNA")],
+          layout=layout_in_circle,
+          vertex.label.color = "black",
+          vertex.label.degree = 45,
+          vertex.frame.color = "azure",
+          vertex.label.dist = 1,
+          vertex.label.cex = V_label_size,
+          edge.color = c("darkgrey","steelblue1","red1")[e_color],
+          edge.width = e_size
+        )
+      } else{
+        plot(
+          net,
+          vertex.size = v_size,
+          vertex.color = c("coral", "lightskyblue")[1 + as.numeric(!V(net)$type ==
+                                                                     "miRNA")],
+          layout=layout_as_tree,
+          vertex.label.color = "black",
+          vertex.label.degree = 45,
+          vertex.frame.color = "azure",
+          vertex.label.dist = 0.5,
+          vertex.label.cex = V_label_size,
+          edge.color = c("darkgrey","steelblue1","red1")[e_color],
+          edge.width = e_size
+        )
+      }
+    }else{
+      plot(make_ring(1))
     }
-    
-    
-    if(layout == "default"){
-      plot(
-        net,
-        vertex.size = v_size,
-        vertex.color = c("goldenrod2", "cornflowerblue")[1 + as.numeric(!V(net)$type ==
-                                                                      "miRNA")],
-        vertex.label.color = "black",
-        vertex.label.degree = 45,
-        vertex.frame.color = "azure",
-        vertex.label.dist = 0.5,
-        vertex.label.cex = V_label_size,
-        edge.color = c("darkgrey","cornflowerblue","firebrick1")[e_color],
-        edge.width = e_size
-      )
-    }else if(layout == "circle"){
-      plot(
-        net,
-        vertex.size = v_size,
-        vertex.color = c("goldenrod2", "cornflowerblue")[1 + as.numeric(!V(net)$type ==
-                                                                      "miRNA")],
-        layout=layout_in_circle,
-        vertex.label.color = "black",
-        vertex.label.degree = 45,
-        vertex.frame.color = "azure",
-        vertex.label.dist = 0.5,
-        vertex.label.cex = V_label_size,
-        edge.color = c("darkgrey","cornflowerblue","firebrick1")[e_color],
-        edge.width = e_size
-      )
-    } else{
-      plot(
-        net,
-        vertex.size = v_size,
-        vertex.color = c("goldenrod2", "cornflowerblue")[1 + as.numeric(!V(net)$type ==
-                                                                      "miRNA")],
-        layout=layout_as_tree,
-        vertex.label.color = "black",
-        vertex.label.degree = 45,
-        vertex.frame.color = "azure",
-        vertex.label.dist = 0.5,
-        vertex.label.cex = V_label_size,
-        edge.color = c("darkgrey","cornflowerblue","firebrick1")[e_color],
-        edge.width = e_size
-      )
-    }
+    return(final_results_complete)
   }
