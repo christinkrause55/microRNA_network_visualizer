@@ -1,14 +1,7 @@
-%% Set miRNA of interest
-values_T2D = values_NASH;
+%% Set microRNAs and mRNAs of interest
+mRNAs = {'SCD','FASN','ELOVL6','ACACA','PNPLA2','LRP6'}
+miRNA_List = {'hsa-miR-182-5p';'hsa-miR-149-5p'};
 
-
-mRNAs = {'SCD','FASN','ELOVL6','ACACA','PNPLA2','LDLR'...
-    'PPARA','LRP6',...
-    'PDK1','INSR','IRS1','IRS2','FOXO1','PCK1','G6PC','SLC2A2'};
-
-% Take only Trait-Associated miRNAs generated from heatmap and which
-% where clustered by clustering
-miRNA_List = IDs;
 miRNAs = [];
 for i=1:size(miRNA_List,1)
     indx = find(strcmp(table2array(values_T2D(:,3)),miRNA_List{i}));
@@ -33,7 +26,6 @@ GOI = [];
   end
 end
 adjacency_select = adjacency_matrix(miRNAs,GOI);
-
 
 %% Add prediction values to adjacency_select
 pred = matches ~= 0;
