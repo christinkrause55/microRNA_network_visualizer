@@ -1,5 +1,5 @@
 %% Set mRNA of interest
-mRNAs = {} % Names will ne added after publication
+mRNAs = {Lrp6, Irs1, Foxo1, Pck1} 
 
 
 % Take only Trait-Associated miRNAs generated from heatmap and which
